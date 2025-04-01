@@ -1,0 +1,3 @@
+#Voronoi polycrystal with 12 random grains
+box 250 250 250
+random 30

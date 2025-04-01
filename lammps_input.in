@@ -1,0 +1,52 @@
+# LAMMPS input script for creep simulation under constant applied tensile stress
+# with iterative dump output every 10,000 timesteps
+
+# --- Initialization ---
+units           metal
+atom_style      atomic
+boundary        p p p
+
+# Read the LAMMPS data file (produced by your automated pipeline)
+read_data       final_lammps.data
+
+# --- Define potential ---
+# Using MEAM potential as an example (adjust pair_style and pair_coeff as needed)
+pair_style      meam/c
+Copypair_coeff * * library.meam V Nb Ta Ti Zr param.meam V Nb Ta Ti Zr
+
+
+# --- Creep simulation settings ---
+# Using fix npt to maintain temperature and apply a constant stress.
+# Here we apply a tensile stress along x by targeting -1.0 (in metal units) in x.
+fix             1 all npt temp 300 300 0.1 x -1.0 -1.0 1.0 y 0.0 0.0 1.0 z 0.0 0.0 1.0
+
+# --- Thermo output ---
+thermo          1000
+thermo_style    custom step temp pe etotal press pxx pyy pzz
+
+# --- Timestep ---
+timestep        0.001   # 1 fs timestep
+
+# --- Loop for iterative output ---
+# This loop will run for 200 iterations, each of 10,000 timesteps (total 2,000,000 timesteps)
+variable iter loop 200
+
+label loop_start
+
+  # Define a dump file name for this iteration
+  variable dumpname string dump_${iter}.lammpstrj
+
+  # Create a dump that outputs every 10,000 steps
+  dump myDump all custom 10000 ${dumpname} id type x y z
+
+  # Run 10,000 timesteps
+  run 10000
+
+  # Remove the dump so the next iteration can use a new file name
+  undump myDump
+
+  # Print a message to the screen
+  print "Iteration ${iter} completed, dump file ${dumpname} written."
+
+next iter
+jump SELF loop_start
